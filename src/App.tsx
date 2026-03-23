@@ -220,10 +220,10 @@ function getFirstDay(y,m) { return new Date(y,m,1).getDay(); }
 
 function getOverlapWindows(availability, names) {
   if (names.length < 2) return [];
-  const allDates = new Set();
+  const allDates = new Set<string>();
   names.forEach(n => { const d=availability[n]; if(d) Object.keys(d).forEach(k=>{ if(d[k]) allDates.add(k); }); });
   const overlaps = [];
-  allDates.forEach(d => {
+  allDates.forEach((d: string) => {
     const count = names.filter(n=>availability[n]?.[d]).length;
     if (count >= 2) overlaps.push({date:d,count});
   });
@@ -231,7 +231,7 @@ function getOverlapWindows(availability, names) {
   const windows=[]; let cur=null;
   overlaps.forEach(o => {
     const d=new Date(o.date+"T00:00:00");
-    if (cur && (d-cur.end)===86400000 && o.count===cur.count) { cur.end=d; cur.endStr=o.date; cur.days++; }
+    if (cur && (d.getTime()-cur.end.getTime())===86400000 && o.count===cur.count) { cur.end=d; cur.endStr=o.date; cur.days++; }
     else { if(cur) windows.push(cur); cur={start:d,end:d,startStr:o.date,endStr:o.date,count:o.count,days:1}; }
   });
   if(cur) windows.push(cur);
@@ -288,7 +288,7 @@ export default function App() {
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
-function Nav({ right, tagline }) {
+function Nav({ right, tagline }: { right?: React.ReactNode, tagline?: boolean }) {
   return (
     <nav className="nav">
       <div className="nav-logo">
@@ -764,12 +764,80 @@ function ContribFlow({ trip, setTrip, pledger, setPledger, onBack }) {
 }
 
 // ── Organizer ─────────────────────────────────────────────────────────────────
+
+// ── Demo scenarios ────────────────────────────────────────────────────────────
+const DEMO_SCENARIOS = {
+  early: {
+    phase:"scheduling", lockedDates:null,
+    pledges:[
+      { id:"d1", name:"Marcus T.", amount:400, wantsCredit:true,  availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-22":true,"2025-08-23":true} },
+      { id:"d2", name:"Diana R.",  amount:0,   wantsCredit:false, availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-22":true,"2025-08-23":true} },
+      { id:"d3", name:"Chris L.",  amount:0,   wantsCredit:false, availability:{"2025-08-16":true,"2025-08-22":true,"2025-08-23":true} },
+    ]
+  },
+  busy: {
+    phase:"scheduling", lockedDates:null,
+    pledges:[
+      { id:"d1", name:"Marcus T.", amount:600, wantsCredit:true,  availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-17":true,"2025-08-22":true,"2025-08-23":true} },
+      { id:"d2", name:"Diana R.",  amount:400, wantsCredit:false, availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d3", name:"Chris L.",  amount:250, wantsCredit:false, availability:{"2025-08-16":true,"2025-08-17":true,"2025-08-22":true,"2025-08-23":true} },
+      { id:"d4", name:"Priya K.",  amount:350, wantsCredit:true,  availability:{"2025-08-15":true,"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d5", name:"James W.",  amount:200, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d6", name:"Sofia M.",  amount:0,   wantsCredit:false, availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-22":true,"2025-08-23":true} },
+      { id:"d7", name:"Tyler B.",  amount:0,   wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true} },
+      { id:"d8", name:"Rachel H.", amount:0,   wantsCredit:false, availability:{"2025-08-15":true,"2025-08-16":true,"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+    ]
+  },
+  pledging: {
+    phase:"pledging", lockedDates:{start:"2025-08-22",end:"2025-08-24"},
+    pledges:[
+      { id:"d1", name:"Marcus T.", amount:600, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d2", name:"Diana R.",  amount:400, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d3", name:"Chris L.",  amount:250, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true} },
+      { id:"d4", name:"Priya K.",  amount:350, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d5", name:"James W.",  amount:200, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d6", name:"Sofia M.",  amount:0,   wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true} },
+      { id:"d7", name:"Tyler B.",  amount:0,   wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d8", name:"Rachel H.", amount:300, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+    ]
+  },
+  almostThere: {
+    phase:"pledging", lockedDates:{start:"2025-08-22",end:"2025-08-24"},
+    pledges:[
+      { id:"d1", name:"Marcus T.", amount:700, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d2", name:"Diana R.",  amount:500, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d3", name:"Chris L.",  amount:300, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true} },
+      { id:"d4", name:"Priya K.",  amount:450, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d5", name:"James W.",  amount:400, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d6", name:"Sofia M.",  amount:600, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true} },
+      { id:"d7", name:"Tyler B.",  amount:350, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d8", name:"Rachel H.", amount:400, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d9", name:"Cam D.",    amount:500, wantsCredit:true,  availability:{"2025-08-22":true,"2025-08-23":true,"2025-08-24":true} },
+      { id:"d10",name:"Nina F.",   amount:200, wantsCredit:false, availability:{"2025-08-22":true,"2025-08-23":true} },
+    ]
+  },
+};
+
 function Organizer({ trip, setTrip, onBack, onCreate }) {
   const [tab,setTab]=useState("scheduling");
   const [showAmts,setShowAmts]=useState(false);
   const [showDatePicker,setShowDatePicker]=useState(false);
   const [lockWarning,setLockWarning]=useState(null);
   const [pendingWindow,setPendingWindow]=useState(null);
+
+  const [showDemo,setShowDemo]=useState(true);
+
+  const loadScenario=(key)=>{
+    const s=DEMO_SCENARIOS[key];
+    setTrip(t=>({...t,phase:s.phase,lockedDates:s.lockedDates,pledges:s.pledges}));
+    setTab(s.phase==="scheduling"?"scheduling":"dashboard");
+  };
+
+  const resetTrip=()=>{
+    setTrip(t=>({...t,phase:"scheduling",lockedDates:null,pledges:[]}));
+    setTab("scheduling");
+  };
+
 
   const total  = trip.pledges.reduce((s,p)=>s+p.amount,0);
   const n      = trip.pledges.length;
@@ -836,6 +904,25 @@ function Organizer({ trip, setTrip, onBack, onCreate }) {
             {curTier&&<span className="chip chip-sage">✓ {curTier.label}</span>}
             {trip.lockedDates&&<span className="chip chip-terra">📅 {formatDateRange(trip.lockedDates.start,trip.lockedDates.end)}</span>}
           </div>
+        </div>
+
+
+        {/* ── Demo controls ── */}
+        <div style={{marginBottom:24,border:"1.5px dashed #c9b99a",borderRadius:12,overflow:"hidden"}}>
+          <button onClick={()=>setShowDemo(v=>!v)} style={{width:"100%",padding:"10px 16px",background:"#eee8dc",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"#4a5a48"}}>
+            <span>🎛️ Demo controls — simulate different stages</span>
+            <span>{showDemo?"▲":"▼"}</span>
+          </button>
+          {showDemo&&<div style={{padding:"16px",background:"#f8f6f1"}}>
+            <div style={{fontSize:12,color:"#7a8a72",marginBottom:12,lineHeight:1.5}}>Jump to any stage to see how the app looks. These controls are only visible to you.</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <button className="btn btn-ghost btn-sm" style={{fontSize:12,justifyContent:"flex-start"}} onClick={()=>loadScenario("early")}>📅 Early — 3 responses</button>
+              <button className="btn btn-ghost btn-sm" style={{fontSize:12,justifyContent:"flex-start"}} onClick={()=>loadScenario("busy")}>📅 Active — 8 responses</button>
+              <button className="btn btn-ghost btn-sm" style={{fontSize:12,justifyContent:"flex-start"}} onClick={()=>loadScenario("pledging")}>💰 Pledging open</button>
+              <button className="btn btn-ghost btn-sm" style={{fontSize:12,justifyContent:"flex-start"}} onClick={()=>loadScenario("almostThere")}>🎯 Almost funded</button>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{fontSize:12,color:"#b5735a",borderColor:"#d4967e"}} onClick={resetTrip}>↺ Reset to empty</button>
+          </div>}
         </div>
 
         <div className="tabs">
